@@ -167,7 +167,20 @@ VectorXf QuadEstimatorEKF::PredictState(VectorXf curState, float dt, V3F accel, 
   Quaternion<float> attitude = Quaternion<float>::FromEuler123_RPY(rollEst, pitchEst, curState(6));
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+  // Integrate position
+  predictedState(0) = curState(0) + curState(3)*dt;
+  predictedState(1) = curState(1) + curState(4)*dt;
+  predictedState(2) = curState(2) + curState(5)*dt;
 
+  // Integrate velocities using accelerometers as input
+  const V3F accel_inertial = attitude.Rotate_BtoI(accel);
+
+  predictedState(3) = curState(3)                    + accel_inertial.x*dt;
+  predictedState(4) = curState(4)                    + accel_inertial.y*dt;
+  predictedState(5) = curState(5) - CONST_GRAVITY*dt + accel_inertial.z*dt;
+
+  // Not integrating yaw since that's done in IMU update
+  predictedState(6) = curState(6);
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
