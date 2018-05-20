@@ -207,7 +207,31 @@ MatrixXf QuadEstimatorEKF::GetRbgPrime(float roll, float pitch, float yaw)
   //   that your calculations are reasonable
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+  // Match notation
+  const float phi = roll;
+  const float theta = pitch;
+  const float psi = yaw;
 
+  // Cosines and sines
+  const float cos_phi = std::cos(phi);
+  const float sin_phi = std::sin(phi);
+
+  const float cos_theta = std::cos(theta);
+  const float sin_theta = std::sin(theta);
+
+  const float cos_psi = std::cos(psi);
+  const float sin_psi = std::sin(psi);
+
+  // Fill the matrix
+  RbgPrime(0,0) = -cos_theta*sin_psi;
+  RbgPrime(0,1) = -sin_phi*sin_theta*sin_psi - cos_theta*cos_psi;
+  RbgPrime(0,2) = -cos_phi*sin_theta*sin_psi + sin_phi*cos_psi;
+  RbgPrime(1,0) = cos_theta*cos_psi;
+  RbgPrime(1,1) = sin_phi*sin_theta*cos_psi - cos_phi*sin_psi;
+  RbgPrime(1,2) = cos_phi*sin_theta*cos_psi + sin_phi*sin_psi;
+  RbgPrime(2,0) = 0.0F;
+  RbgPrime(2,1) = 0.0F;
+  RbgPrime(2,2) = 0.0F;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
