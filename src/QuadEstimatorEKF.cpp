@@ -315,7 +315,8 @@ void QuadEstimatorEKF::Predict(float dt, V3F accel, V3F gyro)
 
 void QuadEstimatorEKF::UpdateFromGPS(V3F pos, V3F vel)
 {
-  VectorXf z(6), zFromX(6);
+  VectorXf z(6);
+  VectorXf zFromX(6);
   z(0) = pos.x;
   z(1) = pos.y;
   z(2) = pos.z;
@@ -331,7 +332,11 @@ void QuadEstimatorEKF::UpdateFromGPS(V3F pos, V3F vel)
   //  - The GPS measurement covariance is available in member variable R_GPS
   //  - this is a very simple update
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
-
+  for (std::size_t i = 0U; i < 6U; ++i)
+  {
+    zFromX(i) = ekfState(i);
+    hPrime(i, i) = 1.0F;
+  }
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
   Update(z, hPrime, R_GPS, zFromX);
