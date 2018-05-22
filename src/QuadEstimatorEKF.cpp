@@ -4,6 +4,26 @@
 #include "Utility/StringUtils.h"
 #include "Math/Quaternion.h"
 
+namespace
+{
+    /// Normalize angle to the range [-pi, pi)
+    /// https://stackoverflow.com/a/11498248
+    ///
+    /// /param x: input angle, in radians
+    /// /return output angle, normalized to the range [-pi, pi)
+    float normalizeAngle(const float x)
+    {
+        float y = fmodf(x + F_PI, 2.0F*F_PI);
+
+        if (y < 0.0F)
+        {
+            y += 2.0F*F_PI;
+        }
+
+        return y - F_PI;
+    }
+}  // namespace
+
 using namespace SLR;
 
 const int QuadEstimatorEKF::QUAD_EKF_NUM_STATES;
@@ -319,7 +339,8 @@ void QuadEstimatorEKF::UpdateFromGPS(V3F pos, V3F vel)
 
 void QuadEstimatorEKF::UpdateFromMag(float magYaw)
 {
-  VectorXf z(1), zFromX(1);
+  VectorXf z(1);
+  VectorXf zFromX(1);
   z(0) = magYaw;
 
   MatrixXf hPrime(1, QUAD_EKF_NUM_STATES);
@@ -332,8 +353,14 @@ void QuadEstimatorEKF::UpdateFromMag(float magYaw)
   //    (you don't want to update your yaw the long way around the circle)
   //  - The magnetomer measurement covariance is available in member variable R_Mag
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+  // Compute h_primer and h(x)
+  hPrime(6) = 1.0F;
+  zFromX(0) = ekfState(6);
 
-
+  // Since the Update function will apply: ekfState = ekfState + K * (z - zFromX),
+  // we need to make sure that z-zFromX is the shortest difference around the circle
+  const float shortest_diff = normalizeAngle(z(0) - zFromX(0));
+  zFromX(0) = z(0) - shortest_diff;
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
   Update(z, hPrime, R_Mag, zFromX);
