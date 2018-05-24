@@ -117,11 +117,11 @@ void QuadEstimatorEKF::UpdateFromIMU(V3F accel, V3F gyro)
   // float predictedRoll = rollEst + dtIMU * gyro.x;
   // ekfState(6) = ekfState(6) + dtIMU * gyro.z;	// yaw
   Quaternion<float> q = Quaternion<float>::FromEuler123_RPY(rollEst, pitchEst, ekfState(6));
-  Quaternion<float> q_integrated = q.IntegrateBodyRate(gyro, dtIMU);
+  q.IntegrateBodyRate(gyro, dtIMU);
 
-  const float predictedRoll = q_integrated.Roll();
-  const float predictedPitch = q_integrated.Pitch();
-  ekfState(6) = q_integrated.Yaw();
+  const float predictedRoll = q.Roll();
+  const float predictedPitch = q.Pitch();
+  ekfState(6) = q.Yaw();
 
   // normalize yaw to -pi .. pi
   if (ekfState(6) > F_PI) ekfState(6) -= 2.f*F_PI;
@@ -188,16 +188,16 @@ VectorXf QuadEstimatorEKF::PredictState(VectorXf curState, float dt, V3F accel, 
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
   // Integrate position
-  predictedState(0) = curState(0) + curState(3)*dt;
-  predictedState(1) = curState(1) + curState(4)*dt;
-  predictedState(2) = curState(2) + curState(5)*dt;
+  predictedState(0) += curState(3)*dt;
+  predictedState(1) += curState(4)*dt;
+  predictedState(2) += curState(5)*dt;
 
   // Integrate velocities using accelerometers as input
-  const V3F accel_inertial = attitude.Rotate_BtoI(accel);
+  const V3F accel_inertial = attitude.Rotate_BtoI(accel) - V3F(0.0F, 0.0F, static_cast<float>(CONST_GRAVITY));
 
-  predictedState(3) = curState(3)                    + accel_inertial.x*dt;
-  predictedState(4) = curState(4)                    + accel_inertial.y*dt;
-  predictedState(5) = curState(5) - CONST_GRAVITY*dt + accel_inertial.z*dt;
+  predictedState(3) += accel_inertial[0]*dt;
+  predictedState(4) += accel_inertial[1]*dt;
+  predictedState(5) += accel_inertial[2]*dt;
 
   // Not integrating yaw since that's done in IMU update
   predictedState(6) = curState(6);
@@ -297,13 +297,22 @@ void QuadEstimatorEKF::Predict(float dt, V3F accel, V3F gyro)
   gPrime.setIdentity();
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+  // Create acceleration vector as a VectorXf
+  VectorXf accel_eigen(3);
+  accel_eigen(0) = accel[0];
+  accel_eigen(1) = accel[1];
+  accel_eigen(2) = accel[2];
+
+  // Multiply times RbgPrime
+  const VectorXf RbgPrimeTimeAccel = RbgPrime * accel_eigen;
+
   // Compute g prime
   gPrime(0, 3) = dt;
   gPrime(1, 4) = dt;
   gPrime(2, 5) = dt;
-  gPrime(3, 6) = (RbgPrime(0,0)*accel.x + RbgPrime(0,1)*accel.y + RbgPrime(0,2)*accel.z)*dt;
-  gPrime(4, 6) = (RbgPrime(1,0)*accel.x + RbgPrime(1,1)*accel.y + RbgPrime(1,2)*accel.z)*dt;
-  gPrime(5, 6) = (RbgPrime(2,0)*accel.x + RbgPrime(2,1)*accel.y + RbgPrime(2,2)*accel.z)*dt;
+  gPrime(3, 6) = RbgPrimeTimeAccel(0)*dt;
+  gPrime(4, 6) = RbgPrimeTimeAccel(1)*dt;
+  gPrime(5, 6) = RbgPrimeTimeAccel(2)*dt;
 
   // Compute new covariance matrix
   MatrixXf newCov = gPrime * ekfCov * gPrime.transpose() + Q;
